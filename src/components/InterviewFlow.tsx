@@ -42,39 +42,23 @@ export default function InterviewFlow({ slug, agentId }: InterviewFlowProps) {
 
   // Step 3: Voice Interview Page
   if (currentStep === "interview") {
-    return <VoiceComponent agentId={agentId} onInterviewComplete={handleInterviewComplete} />;
+    return (
+      <VoiceComponent
+        agentId={agentId}
+        slug={slug}
+        onInterviewComplete={handleInterviewComplete}
+      />
+    );
   }
 
-
-  // Step 4: Complete/Results Page
+  // Step 4: Completion Page
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f8f9ff] via-white to-[#f0f2ff] flex items-center justify-center px-4">
-      <div className="w-full max-w-2xl bg-white/70 backdrop-blur-md rounded-2xl shadow-xl border border-white/50 p-8 text-center">
-        {interviewResult?.outcome === "pass" ? (
-          <>
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">
-              Congratulations! You've completed your interview with Tammy.
-            </h1>
-            <p className="text-gray-600 mb-6">
-              Your responses have been recorded. The next step is to meet with CEO Stephen Jackson.
-            </p>
-            <a
-              href="https://calendly.com/stephen-jackson"
-              className="inline-block bg-gradient-to-r from-[#5746b2] to-[#7b6dd8] hover:from-[#4a3a9f] hover:to-[#6b5dc8] text-white px-6 py-3 rounded-xl font-semibold transition-all"
-            >
-              Book Your Meeting with Stephen
-            </a>
-          </>
-        ) : (
-          <>
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">
-              Thank you for completing the interview.
-            </h1>
-            <p className="text-gray-600">
-              We appreciate your time and will review your responses. We'll be in touch soon!
-            </p>
-          </>
-        )}
+      <div className="text-center">
+        <h1 className="text-3xl font-bold text-gray-900 mb-4">
+          Interview Complete!
+        </h1>
+        <p className="text-gray-600">Thank you for completing the interview.</p>
       </div>
     </div>
   );

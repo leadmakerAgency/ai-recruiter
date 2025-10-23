@@ -1,35 +1,29 @@
 // src/app/layout.tsx
 import type { Metadata } from "next";
-import localFont from "next/font/local";
 import "./globals.css";
-import { ReactNode } from "react";
-
-// Note the leading "./fonts" (relative to src/app)
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff",
-  variable: "--font-geist-sans",
-  weight: "100 900",
-});
-
-const geistMono = localFont({
-  src: "./fonts/GeistMonoVF.woff",
-  variable: "--font-geist-mono",
-  weight: "100 900",
-});
+import Script from "next/script";
 
 export const metadata: Metadata = {
-  title: "ElevenLabs Conversational AI Demo",
-  description: "A demo of ElevenLabs Conversational AI",
+  title: "AI Interview Platform",
+  description: "AI-powered recruitment interviews",
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable}`}
-    >
-      <head />
-      <body>{children}</body>
+    <html lang="en">
+      <body>
+        {children}
+        
+        {/* Calendly Widget Script */}
+        <Script
+          src="https://assets.calendly.com/assets/external/widget.js"
+          strategy="afterInteractive"
+        />
+      </body>
     </html>
   );
 }
