@@ -1,11 +1,10 @@
 // src/app/[slug]/page.tsx
 import InterviewFlow from '@/components/InterviewFlow';
 
-// Map slugs to agent IDs
+// Map slugs to agent IDs - Only Tammy and Sales
 const agentIdMap: { [key: string]: string } = {
   tammy: process.env.NEXT_PUBLIC_TAMMY_AGENT_ID || '',
-  edson: process.env.NEXT_PUBLIC_EDSON_AGENT_ID || '',
-  griffin: process.env.NEXT_PUBLIC_GRIFFIN_AGENT_ID || '',
+  sales: process.env.NEXT_PUBLIC_SALES_AGENT_ID || '',
 };
 
 export default async function AgentPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -26,7 +25,6 @@ export default async function AgentPage({ params }: { params: Promise<{ slug: st
 export async function generateStaticParams() {
   return [
     { slug: 'tammy' },
-    { slug: 'edson' },
-    { slug: 'griffin' },
+    { slug: 'sales' },
   ];
 }
