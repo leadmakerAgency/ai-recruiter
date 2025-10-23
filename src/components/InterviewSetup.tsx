@@ -1,21 +1,13 @@
 // src/components/InterviewSetup.tsx
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
 import { Mic, Clock, CheckCircle } from "lucide-react";
 
-export default function InterviewSetup() {
-  const pathname = usePathname();
-  const router = useRouter();
-  
-  // Extract slug from URL: /tammy, /edson, /griffin
-  const slug = pathname.split('/').filter(Boolean)[0];
+interface InterviewSetupProps {
+  onStartInterview: () => void;
+}
 
-  const handleStartInterview = () => {
-    // Navigate to the interview page for this agent
-    router.push(`/${slug}/interview`);
-  };
-
+export default function InterviewSetup({ onStartInterview }: InterviewSetupProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f8f9ff] via-white to-[#f0f2ff] flex items-center justify-center px-4 py-8 sm:py-12">
       <div className="w-full max-w-xl">
@@ -90,7 +82,7 @@ export default function InterviewSetup() {
             </p>
 
             <button
-              onClick={handleStartInterview}
+              onClick={onStartInterview}
               className="w-full bg-gradient-to-r from-[#5746b2] to-[#7b6dd8] hover:from-[#4a3a9f] hover:to-[#6b5dc8] text-white px-6 py-3.5 rounded-xl font-semibold text-base transition-all shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
             >
               <Mic className="w-5 h-5" />

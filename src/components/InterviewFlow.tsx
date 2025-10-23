@@ -32,7 +32,7 @@ export default function InterviewFlow({ slug, agentId }: InterviewFlowProps) {
 
   // Step 1: Interview Setup Page
   if (currentStep === "setup") {
-    return <InterviewSetup />;
+    return <InterviewSetup onStartInterview={handleStartInterview} />;
   }
 
   // Step 2: Audio Configuration Page
