@@ -32,7 +32,7 @@ export default function InterviewFlow({ slug, agentId }: InterviewFlowProps) {
 
   // Step 1: Interview Setup Page
   if (currentStep === "setup") {
-    return <InterviewSetup slug={slug} onStartInterview={handleStartInterview} />;
+    return <InterviewSetup />;
   }
 
   // Step 2: Audio Configuration Page
@@ -45,40 +45,35 @@ export default function InterviewFlow({ slug, agentId }: InterviewFlowProps) {
     return <VoiceComponent agentId={agentId} onInterviewComplete={handleInterviewComplete} />;
   }
 
+
   // Step 4: Complete/Results Page
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4">
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-[#f8f9ff] via-white to-[#f0f2ff] flex items-center justify-center px-4">
+      <div className="w-full max-w-2xl bg-white/70 backdrop-blur-md rounded-2xl shadow-xl border border-white/50 p-8 text-center">
         {interviewResult?.outcome === "pass" ? (
-          <div className="bg-white p-8 rounded-lg shadow">
-            <h2 className="text-2xl font-bold text-green-600 mb-4">
+          <>
+            <h1 className="text-3xl font-bold text-gray-900 mb-4">
               Congratulations! You've completed your interview with Tammy.
-            </h2>
-            <p className="mb-6 text-gray-700">
+            </h1>
+            <p className="text-gray-600 mb-6">
               Your responses have been recorded. The next step is to meet with CEO Stephen Jackson.
             </p>
-            <h3 className="text-xl font-semibold mb-4">Book Your Meeting with Stephen</h3>
-            
-            <div
-              className="calendly-inline-widget"
-              data-url="https://calendly.com/your-link"
-              style={{ minWidth: "320px", height: "630px" }}
-            />
-            <script
-              type="text/javascript"
-              src="https://assets.calendly.com/assets/external/widget.js"
-              async
-            />
-          </div>
+            <a
+              href="https://calendly.com/stephen-jackson"
+              className="inline-block bg-gradient-to-r from-[#5746b2] to-[#7b6dd8] hover:from-[#4a3a9f] hover:to-[#6b5dc8] text-white px-6 py-3 rounded-xl font-semibold transition-all"
+            >
+              Book Your Meeting with Stephen
+            </a>
+          </>
         ) : (
-          <div className="bg-white p-8 rounded-lg shadow">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+          <>
+            <h1 className="text-3xl font-bold text-gray-900 mb-4">
               Thank you for completing the interview.
-            </h2>
-            <p className="text-gray-700">
+            </h1>
+            <p className="text-gray-600">
               We appreciate your time and will review your responses. We'll be in touch soon!
             </p>
-          </div>
+          </>
         )}
       </div>
     </div>
