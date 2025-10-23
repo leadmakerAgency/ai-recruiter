@@ -1,14 +1,21 @@
 // src/components/InterviewSetup.tsx
 "use client";
 
+import { usePathname, useRouter } from "next/navigation";
 import { Mic, Clock, CheckCircle } from "lucide-react";
 
-interface InterviewSetupProps {
-  slug: string;
-  onStartInterview: () => void;
-}
+export default function InterviewSetup() {
+  const pathname = usePathname();
+  const router = useRouter();
+  
+  // Extract slug from URL: /tammy, /edson, /griffin
+  const slug = pathname.split('/').filter(Boolean)[0];
 
-export default function InterviewSetup({ slug, onStartInterview }: InterviewSetupProps) {
+  const handleStartInterview = () => {
+    // Navigate to the interview page for this agent
+    router.push(`/${slug}/interview`);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f8f9ff] via-white to-[#f0f2ff] flex items-center justify-center px-4 py-8 sm:py-12">
       <div className="w-full max-w-xl">
@@ -23,7 +30,7 @@ export default function InterviewSetup({ slug, onStartInterview }: InterviewSetu
             </p>
           </div>
 
-          {/* Voice Interview Card - REMOVED bubble circles */}
+          {/* Voice Interview Card */}
           <div className="px-6 sm:px-8 pb-5">
             <div className="bg-gradient-to-br from-[#5746b2] to-[#8b7dd8] rounded-xl p-6 text-white shadow-lg">
               <div>
@@ -83,7 +90,7 @@ export default function InterviewSetup({ slug, onStartInterview }: InterviewSetu
             </p>
 
             <button
-              onClick={onStartInterview}
+              onClick={handleStartInterview}
               className="w-full bg-gradient-to-r from-[#5746b2] to-[#7b6dd8] hover:from-[#4a3a9f] hover:to-[#6b5dc8] text-white px-6 py-3.5 rounded-xl font-semibold text-base transition-all shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
             >
               <Mic className="w-5 h-5" />
