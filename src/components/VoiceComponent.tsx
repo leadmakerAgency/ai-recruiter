@@ -6,14 +6,14 @@ import { Mic, MicOff, Phone, RotateCcw, Calendar } from "lucide-react";
 
 interface VoiceProps {
   agentId: string;
-  slug: string; // NEW: Accept slug prop
+  slug: string; // pass the route slug so we can pick the right Calendly link
   onInterviewComplete?: (outcome: string, data: any) => void;
 }
 
-// NEW: Calendly URL mapping for each agent
+// Per‑agent Calendly links via env vars
 const calendlyUrls: { [key: string]: string } = {
-  tammy: process.env.NEXT_PUBLIC_TAMMY_CALENDLY_URL || '',
-  sales: process.env.NEXT_PUBLIC_SALES_CALENDLY_URL || '',
+  tammy: process.env.NEXT_PUBLIC_TAMMY_CALENDLY_URL || "",
+  sales: process.env.NEXT_PUBLIC_SALES_CALENDLY_URL || "",
 };
 
 export default function VoiceComponent({ agentId, slug, onInterviewComplete }: VoiceProps) {
@@ -27,160 +27,136 @@ export default function VoiceComponent({ agentId, slug, onInterviewComplete }: V
   const [candidateName, setCandidateName] = useState("");
   const audioStreamRef = useRef<MediaStream | null>(null);
 
-  // NEW: Get Calendly URL for this agent
-  const calendlyUrl = calendlyUrls[slug] || calendlyUrls.tammy;
+  const calendlyUrl = calendlyUrls[slug] || "";
 
   const conversation = useConversation({
     agentId,
+    clientTools: {
+      // Must be a function — no extra keys
+      showCalendly: async (args: any) => {
+        setCandidateName(args?.candidateName || "");
+        setShowCalendly(true);
+        // returning void is fine; no need to return a value
+      },
+    },
+
     onConnect: () => {
-      console.log("✅ Connected to agent");
       setHasEnded(false);
-      
-      if (typeof window !== 'undefined' && (window as any).__microphoneStream) {
+      if (typeof window !== "undefined" && (window as any).__microphoneStream) {
         audioStreamRef.current = (window as any).__microphoneStream;
       }
     },
+
     onDisconnect: () => {
-      console.log("❌ Disconnected - Duration:", callDuration, "seconds");
       setHasEnded(true);
-      
-      if (typeof window !== 'undefined' && (window as any).__microphoneStream) {
-        const stream = (window as any).__microphoneStream;
-        stream.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+      if (typeof window !== "undefined" && (window as any).__microphoneStream) {
+        const stream = (window as any).__microphoneStream as MediaStream;
+        stream.getTracks().forEach((t) => t.stop());
         delete (window as any).__microphoneStream;
       }
       audioStreamRef.current = null;
     },
+
     onMessage: (message: any) => {
-      console.log("📩 Message:", message);
-      
-      if (message && typeof message === 'object') {
-        if (message.type === 'agent_response' || message.source === 'ai') {
-          const text = message.message || message.text || message.content || '';
-          if (text) {
-            setTranscript(text);
-            setIsAgentSpeaking(true);
-          }
+      // Keep your transcript/voice animation behavior
+      if (message?.type === "agent_response" || message?.source === "ai") {
+        const text = message.message || message.text || message.content || "";
+        if (text) {
+          setTranscript(text);
+          setIsAgentSpeaking(true);
         }
-        
-        if (message.type === 'user_transcript' || message.source === 'user') {
-          const text = message.message || message.text || message.content || '';
-          if (text) {
-            setTranscript(`You: ${text}`);
-            setIsAgentSpeaking(false);
-          }
+      } else if (message?.type === "user_transcript" || message?.source === "user") {
+        const text = message.message || message.text || message.content || "";
+        if (text) {
+          setTranscript(`You: ${text}`);
+          setIsAgentSpeaking(false);
         }
-        
-        if (!message.type && !message.source) {
-          const text = message.message || message.text || message.content || '';
-          if (text) {
-            setTranscript(text);
-          }
-        }
-        
-        if (message.type === "function_call" || message.type === "tool_call") {
-          const functionName = message.function || message.name || message.tool;
-          const args = message.arguments || message.args || {};
-          
-          if (functionName === "showCalendly") {
-            setCandidateName(args.candidateName || "");
-            setShowCalendly(true);
-          }
-        }
+      } else if (!message?.type && !message?.source) {
+        const text = message?.message || message?.text || message?.content || "";
+        if (text) setTranscript(text);
       }
+      // No need to manually handle "tool_call" here now that clientTools is defined
     },
+
     onError: (error: string | Error) => {
-      const errorMsg = typeof error === "string" ? error : error.message;
-      console.error("🚨 Error:", errorMsg);
-      setErrorMessage(errorMsg);
+      const msg = typeof error === "string" ? error : error.message;
+      setErrorMessage(msg);
     },
   });
 
-  const { status, isSpeaking } = conversation;
+  const { status, isSpeaking, startSession, endSession } = conversation as any;
 
   useEffect(() => {
     const startConversation = async () => {
       try {
-        await new Promise(resolve => setTimeout(resolve, 800));
+        await new Promise((r) => setTimeout(r, 800));
         setErrorMessage("");
         setHasEnded(false);
-        await conversation.startSession();
-      } catch (error) {
-        console.error("❌ Failed to start:", error);
+        await startSession?.();
+      } catch (e) {
         setErrorMessage("Failed to connect. Please refresh and try again.");
       }
     };
-
     startConversation();
-  }, []);
+  }, [startSession]);
 
   useEffect(() => {
     if (isSpeaking) {
       setIsAgentSpeaking(true);
     } else {
-      const timer = setTimeout(() => setIsAgentSpeaking(false), 1000);
-      return () => clearTimeout(timer);
+      const t = setTimeout(() => setIsAgentSpeaking(false), 1000);
+      return () => clearTimeout(t);
     }
   }, [isSpeaking]);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: NodeJS.Timeout | undefined;
     if (status === "connected") {
-      interval = setInterval(() => setCallDuration(prev => prev + 1), 1000);
+      interval = setInterval(() => setCallDuration((p) => p + 1), 1000);
     }
-    return () => { if (interval) clearInterval(interval); };
+    return () => interval && clearInterval(interval);
   }, [status]);
 
   useEffect(() => {
-    if (showCalendly && typeof window !== 'undefined') {
-      const script = document.createElement('script');
-      script.src = 'https://assets.calendly.com/assets/external/widget.js';
+    if (showCalendly && typeof window !== "undefined") {
+      const script = document.createElement("script");
+      script.src = "https://assets.calendly.com/assets/external/widget.js";
       script.async = true;
       document.body.appendChild(script);
-      return () => { document.body.removeChild(script); };
+      return () => {
+        try {
+          document.body.removeChild(script);
+        } catch {}
+      };
     }
   }, [showCalendly]);
 
   useEffect(() => {
-    const muteAudioTracks = () => {
-      if (typeof window !== 'undefined' && (window as any).__microphoneStream) {
-        const stream = (window as any).__microphoneStream;
-        stream.getAudioTracks().forEach((track: MediaStreamTrack) => {
-          track.enabled = !isMuted;
-        });
-        console.log(isMuted ? "🔇 Microphone muted" : "🔊 Microphone unmuted");
+    const applyMute = () => {
+      if (typeof window !== "undefined" && (window as any).__microphoneStream) {
+        const stream = (window as any).__microphoneStream as MediaStream;
+        stream.getAudioTracks().forEach((t) => (t.enabled = !isMuted));
       }
-      
       if (audioStreamRef.current) {
-        audioStreamRef.current.getAudioTracks().forEach((track: MediaStreamTrack) => {
-          track.enabled = !isMuted;
-        });
+        audioStreamRef.current.getAudioTracks().forEach((t) => (t.enabled = !isMuted));
       }
     };
-
-    if (status === "connected") {
-      muteAudioTracks();
-    }
+    if (status === "connected") applyMute();
   }, [isMuted, status]);
 
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
+  const formatDuration = (s: number) =>
+    `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
   const handleEndConversation = async () => {
     try {
-      await conversation.endSession();
+      await endSession?.();
       setHasEnded(true);
-    } catch (error) {
-      console.error("Error ending:", error);
+    } catch (e) {
+      // no-op
     }
   };
 
-  const toggleMute = () => {
-    setIsMuted(!isMuted);
-  };
+  const toggleMute = () => setIsMuted((v) => !v);
 
   const handleTalkAgain = async () => {
     try {
@@ -191,20 +167,18 @@ export default function VoiceComponent({ agentId, slug, onInterviewComplete }: V
       setCandidateName("");
       setErrorMessage("");
       setIsMuted(false);
-      await conversation.startSession();
-    } catch (error) {
-      console.error("Error restarting:", error);
+      await startSession?.();
+    } catch {
       setErrorMessage("Failed to restart");
     }
   };
 
-  // UPDATED: Calendly Popup with Dynamic URL and Generic Messaging
+  // Calendly popup (generic copy + dynamic URL)
   if (showCalendly && status === "connected") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#f8f9ff] via-white to-[#f0f2ff] flex items-center justify-center px-4 py-8">
         <div className="w-full max-w-4xl">
           <div className="bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl border border-white/50 overflow-hidden">
-            {/* UPDATED: Generic Header */}
             <div className="bg-gradient-to-r from-[#5746b2] to-[#7b6dd8] px-6 py-5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -212,28 +186,28 @@ export default function VoiceComponent({ agentId, slug, onInterviewComplete }: V
                     <Calendar className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-white">
-                      Congratulations! 🎉
-                    </h2>
-                    <p className="text-white/90 text-sm">You've completed your interview successfully</p>
+                    <h2 className="text-xl font-bold text-white">Congratulations! 🎉</h2>
+                    <p className="text-white/90 text-sm">You’ve completed your interview successfully</p>
                   </div>
                 </div>
-                <button onClick={() => setShowCalendly(false)} className="text-white/80 hover:text-white transition-colors">
+                <button
+                  onClick={() => setShowCalendly(false)}
+                  className="text-white/80 hover:text-white transition-colors"
+                  aria-label="Close"
+                >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
             </div>
-            
-            {/* UPDATED: Calendly Widget with Dynamic URL */}
             <div className="p-4 bg-gray-50">
-              <div className="calendly-inline-widget rounded-xl overflow-hidden" 
-                   data-url={calendlyUrl}
-                   style={{ minWidth: '320px', height: '700px' }}></div>
+              <div
+                className="calendly-inline-widget rounded-xl overflow-hidden"
+                data-url={calendlyUrl}
+                style={{ minWidth: "320px", height: "700px" }}
+              />
             </div>
-            
-            {/* UPDATED: Generic Footer Message */}
             <div className="px-6 py-4 bg-white border-t border-gray-200">
               <p className="text-sm text-gray-600 text-center">
                 Schedule your next interview below to continue the process.
@@ -244,6 +218,8 @@ export default function VoiceComponent({ agentId, slug, onInterviewComplete }: V
       </div>
     );
   }
+
+  // The rest of your original UI (unchanged) …
 
   if (hasEnded && status === "disconnected") {
     return (
@@ -258,8 +234,10 @@ export default function VoiceComponent({ agentId, slug, onInterviewComplete }: V
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Call Ended</h2>
               <p className="text-gray-600 text-base mb-6">Duration: {formatDuration(callDuration)}</p>
-              <button onClick={handleTalkAgain}
-                className="w-full bg-gradient-to-r from-[#5746b2] to-[#7b6dd8] hover:from-[#4a3a9f] hover:to-[#6b5dc8] text-white px-6 py-3.5 rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 text-base">
+              <button
+                onClick={handleTalkAgain}
+                className="w-full bg-gradient-to-r from-[#5746b2] to-[#7b6dd8] hover:from-[#4a3a9f] hover:to-[#6b5dc8] text-white px-6 py-3.5 rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 text-base"
+              >
                 <RotateCcw className="w-5 h-5" />
                 Talk Again
               </button>
@@ -281,8 +259,10 @@ export default function VoiceComponent({ agentId, slug, onInterviewComplete }: V
               </svg>
               <h2 className="text-xl font-bold text-gray-900 mb-2">Connection Error</h2>
               <p className="text-gray-600 text-sm mb-6">{errorMessage}</p>
-              <button onClick={() => window.location.reload()}
-                className="w-full bg-gradient-to-r from-[#5746b2] to-[#7b6dd8] hover:from-[#4a3a9f] hover:to-[#6b5dc8] text-white px-6 py-3.5 rounded-xl font-semibold text-base transition-all shadow-lg">
+              <button
+                onClick={() => window.location.reload()}
+                className="w-full bg-gradient-to-r from-[#5746b2] to-[#7b6dd8] hover:from-[#4a3a9f] hover:to-[#6b5dc8] text-white px-6 py-3.5 rounded-xl font-semibold text-base transition-all shadow-lg"
+              >
                 Refresh Page
               </button>
             </div>
@@ -322,7 +302,10 @@ export default function VoiceComponent({ agentId, slug, onInterviewComplete }: V
               <svg className="w-4 h-4 text-[#5746b2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span className="text-sm font-bold text-gray-900">{formatDuration(callDuration)}</span>
+              <span className="text-sm font-bold text-gray-900">
+                {String(Math.floor(callDuration / 60)).padStart(2, "0")}:
+                {String(callDuration % 60).padStart(2, "0")}
+              </span>
             </div>
           </div>
         </div>
@@ -330,23 +313,40 @@ export default function VoiceComponent({ agentId, slug, onInterviewComplete }: V
 
       <div className="flex-1 flex items-center justify-center">
         <div className="relative">
-          <div className={`absolute inset-0 rounded-full transition-all duration-700 ${
-            isSpeaking ? 'bg-gradient-to-r from-[#5746b2] to-[#8b7dd8] opacity-20 scale-150 blur-2xl' : 'opacity-0 scale-100'
-          }`}></div>
+          <div
+            className={`absolute inset-0 rounded-full transition-all duration-700 ${
+              isSpeaking ? "bg-gradient-to-r from-[#5746b2] to-[#8b7dd8] opacity-20 scale-150 blur-2xl" : "opacity-0 scale-100"
+            }`}
+          ></div>
           {isSpeaking && (
             <>
-              <div className="absolute -inset-8 rounded-full border-2 border-[#5746b2]/30 animate-ping" style={{ animationDuration: '2s' }}></div>
-              <div className="absolute -inset-10 rounded-full border-2 border-[#5746b2]/20 animate-ping" style={{ animationDuration: '2.5s', animationDelay: '0.3s' }}></div>
+              <div
+                className="absolute -inset-8 rounded-full border-2 border-[#5746b2]/30 animate-ping"
+                style={{ animationDuration: "2s" }}
+              ></div>
+              <div
+                className="absolute -inset-10 rounded-full border-2 border-[#5746b2]/20 animate-ping"
+                style={{ animationDuration: "2.5s", animationDelay: "0.3s" }}
+              ></div>
             </>
           )}
-          <div className={`relative w-52 h-52 rounded-full bg-gradient-to-br from-[#5746b2] to-[#8b7dd8] shadow-2xl transition-all duration-500 ${
-            isSpeaking ? 'scale-105' : 'scale-100'
-          }`}>
+          <div
+            className={`relative w-52 h-52 rounded-full bg-gradient-to-br from-[#5746b2] to-[#8b7dd8] shadow-2xl transition-all duration-500 ${
+              isSpeaking ? "scale-105" : "scale-100"
+            }`}
+          >
             <div className="absolute inset-4 rounded-full bg-white/10 backdrop-blur-sm border border-white/20"></div>
             <div className="absolute inset-0 flex items-center justify-center gap-1.5">
               {[0, 1, 2, 3, 4].map((i) => (
-                <div key={i} className={`w-1.5 rounded-full bg-white transition-all duration-300 ${isSpeaking ? 'animate-pulse' : ''}`}
-                  style={{ height: isSpeaking ? `${30 + Math.random() * 40}px` : '20px', animationDelay: `${i * 0.1}s`, animationDuration: '0.6s' }}></div>
+                <div
+                  key={i}
+                  className={`w-1.5 rounded-full bg-white transition-all duration-300 ${isSpeaking ? "animate-pulse" : ""}`}
+                  style={{
+                    height: isSpeaking ? `${30 + Math.random() * 40}px` : "20px",
+                    animationDelay: `${i * 0.1}s`,
+                    animationDuration: "0.6s",
+                  }}
+                ></div>
               ))}
             </div>
           </div>
@@ -363,15 +363,13 @@ export default function VoiceComponent({ agentId, slug, onInterviewComplete }: V
 
       <div className="w-full max-w-md mx-auto flex items-center justify-center gap-3">
         <button
-          onClick={toggleMute}
+          onClick={() => setIsMuted((v) => !v)}
           className={`px-8 py-4 rounded-xl flex items-center gap-3 font-medium text-sm transition-all ${
-            isMuted 
-              ? 'bg-gray-400 hover:bg-gray-500 text-white' 
-              : 'bg-[#e8e4f3] hover:bg-[#ddd6ec] text-gray-700'
+            isMuted ? "bg-gray-400 hover:bg-gray-500 text-white" : "bg-[#e8e4f3] hover:bg-[#ddd6ec] text-gray-700"
           }`}
         >
           {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-          {isMuted ? 'Unmute' : 'Mute'}
+          {isMuted ? "Unmute" : "Mute"}
         </button>
 
         <button
